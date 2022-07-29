@@ -1,0 +1,2976 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "fd91f0e4",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import random\n",
+    "import joblib\n",
+    "\n",
+    "from sklearn.model_selection import train_test_split, KFold\n",
+    "from sklearn.pipeline import make_pipeline\n",
+    "from sklearn.model_selection import GridSearchCV\n",
+    "from sklearn.preprocessing import RobustScaler\n",
+    "from sklearn.preprocessing import MinMaxScaler\n",
+    "\n",
+    "\n",
+    "\n",
+    "from sklearn.ensemble import AdaBoostClassifier\n",
+    "from sklearn.linear_model import LogisticRegression\n",
+    "from xgboost import XGBClassifier\n",
+    "\n",
+    "\n",
+    "\n",
+    "from category_encoders import JamesSteinEncoder \n",
+    "from category_encoders import GLMMEncoder \n",
+    "from category_encoders import CatBoostEncoder \n",
+    "import category_encoders as ce\n",
+    "from category_encoders.target_encoder import TargetEncoder\n",
+    "\n",
+    "\n",
+    "\n",
+    "\n",
+    "pd.set_option('display.expand_frame_repr', False)\n",
+    "pd.set_option('display.max_columns', 20)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "8f1ba9d1",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "features = pd.read_csv(\"data/train_values.csv\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "3466139f",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "target = pd.read_csv(\"data/train_labels.csv\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "59cdf695",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "<class 'pandas.core.frame.DataFrame'>\n",
+      "RangeIndex: 260601 entries, 0 to 260600\n",
+      "Data columns (total 39 columns):\n",
+      " #   Column                                  Non-Null Count   Dtype \n",
+      "---  ------                                  --------------   ----- \n",
+      " 0   building_id                             260601 non-null  int64 \n",
+      " 1   geo_level_1_id                          260601 non-null  int64 \n",
+      " 2   geo_level_2_id                          260601 non-null  int64 \n",
+      " 3   geo_level_3_id                          260601 non-null  int64 \n",
+      " 4   count_floors_pre_eq                     260601 non-null  int64 \n",
+      " 5   age                                     260601 non-null  int64 \n",
+      " 6   area_percentage                         260601 non-null  int64 \n",
+      " 7   height_percentage                       260601 non-null  int64 \n",
+      " 8   land_surface_condition                  260601 non-null  object\n",
+      " 9   foundation_type                         260601 non-null  object\n",
+      " 10  roof_type                               260601 non-null  object\n",
+      " 11  ground_floor_type                       260601 non-null  object\n",
+      " 12  other_floor_type                        260601 non-null  object\n",
+      " 13  position                                260601 non-null  object\n",
+      " 14  plan_configuration                      260601 non-null  object\n",
+      " 15  has_superstructure_adobe_mud            260601 non-null  int64 \n",
+      " 16  has_superstructure_mud_mortar_stone     260601 non-null  int64 \n",
+      " 17  has_superstructure_stone_flag           260601 non-null  int64 \n",
+      " 18  has_superstructure_cement_mortar_stone  260601 non-null  int64 \n",
+      " 19  has_superstructure_mud_mortar_brick     260601 non-null  int64 \n",
+      " 20  has_superstructure_cement_mortar_brick  260601 non-null  int64 \n",
+      " 21  has_superstructure_timber               260601 non-null  int64 \n",
+      " 22  has_superstructure_bamboo               260601 non-null  int64 \n",
+      " 23  has_superstructure_rc_non_engineered    260601 non-null  int64 \n",
+      " 24  has_superstructure_rc_engineered        260601 non-null  int64 \n",
+      " 25  has_superstructure_other                260601 non-null  int64 \n",
+      " 26  legal_ownership_status                  260601 non-null  object\n",
+      " 27  count_families                          260601 non-null  int64 \n",
+      " 28  has_secondary_use                       260601 non-null  int64 \n",
+      " 29  has_secondary_use_agriculture           260601 non-null  int64 \n",
+      " 30  has_secondary_use_hotel                 260601 non-null  int64 \n",
+      " 31  has_secondary_use_rental                260601 non-null  int64 \n",
+      " 32  has_secondary_use_institution           260601 non-null  int64 \n",
+      " 33  has_secondary_use_school                260601 non-null  int64 \n",
+      " 34  has_secondary_use_industry              260601 non-null  int64 \n",
+      " 35  has_secondary_use_health_post           260601 non-null  int64 \n",
+      " 36  has_secondary_use_gov_office            260601 non-null  int64 \n",
+      " 37  has_secondary_use_use_police            260601 non-null  int64 \n",
+      " 38  has_secondary_use_other                 260601 non-null  int64 \n",
+      "dtypes: int64(31), object(8)\n",
+      "memory usage: 77.5+ MB\n"
+     ]
+    }
+   ],
+   "source": [
+    "features.info()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "0940e772",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "<class 'pandas.core.frame.DataFrame'>\n",
+      "RangeIndex: 260601 entries, 0 to 260600\n",
+      "Data columns (total 2 columns):\n",
+      " #   Column        Non-Null Count   Dtype\n",
+      "---  ------        --------------   -----\n",
+      " 0   building_id   260601 non-null  int64\n",
+      " 1   damage_grade  260601 non-null  int64\n",
+      "dtypes: int64(2)\n",
+      "memory usage: 4.0 MB\n"
+     ]
+    }
+   ],
+   "source": [
+    "target.info()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "c640e6b4",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "2    148259\n",
+       "3     87218\n",
+       "1     25124\n",
+       "Name: damage_grade, dtype: int64"
+      ]
+     },
+     "execution_count": 8,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "target['damage_grade'].value_counts()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "id": "2a1a67bf",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>building_id</th>\n",
+       "      <th>geo_level_1_id</th>\n",
+       "      <th>geo_level_2_id</th>\n",
+       "      <th>geo_level_3_id</th>\n",
+       "      <th>count_floors_pre_eq</th>\n",
+       "      <th>age</th>\n",
+       "      <th>area_percentage</th>\n",
+       "      <th>height_percentage</th>\n",
+       "      <th>land_surface_condition</th>\n",
+       "      <th>foundation_type</th>\n",
+       "      <th>...</th>\n",
+       "      <th>has_secondary_use_hotel</th>\n",
+       "      <th>has_secondary_use_rental</th>\n",
+       "      <th>has_secondary_use_institution</th>\n",
+       "      <th>has_secondary_use_school</th>\n",
+       "      <th>has_secondary_use_industry</th>\n",
+       "      <th>has_secondary_use_health_post</th>\n",
+       "      <th>has_secondary_use_gov_office</th>\n",
+       "      <th>has_secondary_use_use_police</th>\n",
+       "      <th>has_secondary_use_other</th>\n",
+       "      <th>damage_grade</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>802906</td>\n",
+       "      <td>6</td>\n",
+       "      <td>487</td>\n",
+       "      <td>12198</td>\n",
+       "      <td>2</td>\n",
+       "      <td>30</td>\n",
+       "      <td>6</td>\n",
+       "      <td>5</td>\n",
+       "      <td>t</td>\n",
+       "      <td>r</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>3</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>28830</td>\n",
+       "      <td>8</td>\n",
+       "      <td>900</td>\n",
+       "      <td>2812</td>\n",
+       "      <td>2</td>\n",
+       "      <td>10</td>\n",
+       "      <td>8</td>\n",
+       "      <td>7</td>\n",
+       "      <td>o</td>\n",
+       "      <td>r</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>2</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>94947</td>\n",
+       "      <td>21</td>\n",
+       "      <td>363</td>\n",
+       "      <td>8973</td>\n",
+       "      <td>2</td>\n",
+       "      <td>10</td>\n",
+       "      <td>5</td>\n",
+       "      <td>5</td>\n",
+       "      <td>t</td>\n",
+       "      <td>r</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>3</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>590882</td>\n",
+       "      <td>22</td>\n",
+       "      <td>418</td>\n",
+       "      <td>10694</td>\n",
+       "      <td>2</td>\n",
+       "      <td>10</td>\n",
+       "      <td>6</td>\n",
+       "      <td>5</td>\n",
+       "      <td>t</td>\n",
+       "      <td>r</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>2</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>201944</td>\n",
+       "      <td>11</td>\n",
+       "      <td>131</td>\n",
+       "      <td>1488</td>\n",
+       "      <td>3</td>\n",
+       "      <td>30</td>\n",
+       "      <td>8</td>\n",
+       "      <td>9</td>\n",
+       "      <td>t</td>\n",
+       "      <td>r</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>3</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>...</th>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>260596</th>\n",
+       "      <td>688636</td>\n",
+       "      <td>25</td>\n",
+       "      <td>1335</td>\n",
+       "      <td>1621</td>\n",
+       "      <td>1</td>\n",
+       "      <td>55</td>\n",
+       "      <td>6</td>\n",
+       "      <td>3</td>\n",
+       "      <td>n</td>\n",
+       "      <td>r</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>2</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>260597</th>\n",
+       "      <td>669485</td>\n",
+       "      <td>17</td>\n",
+       "      <td>715</td>\n",
+       "      <td>2060</td>\n",
+       "      <td>2</td>\n",
+       "      <td>0</td>\n",
+       "      <td>6</td>\n",
+       "      <td>5</td>\n",
+       "      <td>t</td>\n",
+       "      <td>r</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>3</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>260598</th>\n",
+       "      <td>602512</td>\n",
+       "      <td>17</td>\n",
+       "      <td>51</td>\n",
+       "      <td>8163</td>\n",
+       "      <td>3</td>\n",
+       "      <td>55</td>\n",
+       "      <td>6</td>\n",
+       "      <td>7</td>\n",
+       "      <td>t</td>\n",
+       "      <td>r</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>3</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>260599</th>\n",
+       "      <td>151409</td>\n",
+       "      <td>26</td>\n",
+       "      <td>39</td>\n",
+       "      <td>1851</td>\n",
+       "      <td>2</td>\n",
+       "      <td>10</td>\n",
+       "      <td>14</td>\n",
+       "      <td>6</td>\n",
+       "      <td>t</td>\n",
+       "      <td>r</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>2</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>260600</th>\n",
+       "      <td>747594</td>\n",
+       "      <td>21</td>\n",
+       "      <td>9</td>\n",
+       "      <td>9101</td>\n",
+       "      <td>3</td>\n",
+       "      <td>10</td>\n",
+       "      <td>7</td>\n",
+       "      <td>6</td>\n",
+       "      <td>n</td>\n",
+       "      <td>r</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>3</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>260601 rows × 40 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "        building_id  geo_level_1_id  geo_level_2_id  geo_level_3_id  count_floors_pre_eq  age  area_percentage  height_percentage land_surface_condition foundation_type  ... has_secondary_use_hotel has_secondary_use_rental has_secondary_use_institution has_secondary_use_school has_secondary_use_industry  has_secondary_use_health_post  has_secondary_use_gov_office  has_secondary_use_use_police  has_secondary_use_other  damage_grade\n",
+       "0            802906               6             487           12198                    2   30                6                  5                      t               r  ...                       0                        0                             0                        0                          0                              0                             0                             0                        0             3\n",
+       "1             28830               8             900            2812                    2   10                8                  7                      o               r  ...                       0                        0                             0                        0                          0                              0                             0                             0                        0             2\n",
+       "2             94947              21             363            8973                    2   10                5                  5                      t               r  ...                       0                        0                             0                        0                          0                              0                             0                             0                        0             3\n",
+       "3            590882              22             418           10694                    2   10                6                  5                      t               r  ...                       0                        0                             0                        0                          0                              0                             0                             0                        0             2\n",
+       "4            201944              11             131            1488                    3   30                8                  9                      t               r  ...                       0                        0                             0                        0                          0                              0                             0                             0                        0             3\n",
+       "...             ...             ...             ...             ...                  ...  ...              ...                ...                    ...             ...  ...                     ...                      ...                           ...                      ...                        ...                            ...                           ...                           ...                      ...           ...\n",
+       "260596       688636              25            1335            1621                    1   55                6                  3                      n               r  ...                       0                        0                             0                        0                          0                              0                             0                             0                        0             2\n",
+       "260597       669485              17             715            2060                    2    0                6                  5                      t               r  ...                       0                        0                             0                        0                          0                              0                             0                             0                        0             3\n",
+       "260598       602512              17              51            8163                    3   55                6                  7                      t               r  ...                       0                        0                             0                        0                          0                              0                             0                             0                        0             3\n",
+       "260599       151409              26              39            1851                    2   10               14                  6                      t               r  ...                       0                        0                             0                        0                          0                              0                             0                             0                        0             2\n",
+       "260600       747594              21               9            9101                    3   10                7                  6                      n               r  ...                       0                        0                             0                        0                          0                              0                             0                             0                        0             3\n",
+       "\n",
+       "[260601 rows x 40 columns]"
+      ]
+     },
+     "execution_count": 11,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df1 = pd.merge(features, target, on='building_id')\n",
+    "df1"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "b30c0744",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import feature_explore as fex"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 36,
+   "id": "70e07b38",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Only a subset of columns of numerical types have been selected for evaluation.\n",
+      "The model might have multicollinearity issues\n",
+      "The significant correlations between indvars to be investigated are (abs(corr)>0.2):\n",
+      "count_floors_pre_eq to age: Pearson = 0.2987228390220201\n",
+      "count_floors_pre_eq to height_percentage: Pearson = 0.7726251344885725\n",
+      "count_floors_pre_eq to has_superstructure_mud_mortar_brick: Pearson = 0.2562460642073037\n",
+      "age to height_percentage: Pearson = 0.2047447468772531\n",
+      "age to has_superstructure_adobe_mud: Pearson = 0.209212147106442\n",
+      "age to has_superstructure_mud_mortar_brick: Pearson = 0.2719205651316019\n",
+      "area_percentage to has_superstructure_mud_mortar_stone: Pearson = -0.2252764931906188\n",
+      "area_percentage to has_superstructure_cement_mortar_brick: Pearson = 0.20987899621968112\n",
+      "area_percentage to has_superstructure_rc_engineered: Pearson = 0.224181056571226\n",
+      "height_percentage to has_superstructure_mud_mortar_brick: Pearson = 0.20792869145622309\n",
+      "has_superstructure_adobe_mud to has_superstructure_mud_mortar_stone: Pearson = -0.30565967648067693\n",
+      "has_superstructure_adobe_mud to has_superstructure_mud_mortar_brick: Pearson = 0.3150178694534154\n",
+      "has_superstructure_mud_mortar_stone to has_superstructure_mud_mortar_brick: Pearson = -0.37604858974593075\n",
+      "has_superstructure_mud_mortar_stone to has_superstructure_cement_mortar_brick: Pearson = -0.4711794367322534\n",
+      "has_superstructure_mud_mortar_stone to has_superstructure_rc_non_engineered: Pearson = -0.22298440325809168\n",
+      "has_superstructure_mud_mortar_stone to has_superstructure_rc_engineered: Pearson = -0.22467865657155017\n",
+      "has_superstructure_mud_mortar_stone to damage_grade: Pearson = 0.29159725161053357\n",
+      "has_superstructure_cement_mortar_brick to damage_grade: Pearson = -0.25454663755149304\n",
+      "has_superstructure_timber to has_superstructure_bamboo: Pearson = 0.43842512143226453\n",
+      "has_secondary_use to has_secondary_use_agriculture: Pearson = 0.7394269514566076\n",
+      "has_secondary_use to has_secondary_use_hotel: Pearson = 0.5253533677306962\n",
+      "has_secondary_use to has_secondary_use_rental: Pearson = 0.2538265762218317\n",
+      "has_secondary_use to has_secondary_use_other: Pearson = 0.20240785944011605\n"
+     ]
+    }
+   ],
+   "source": [
+    "fex.eval_corr(df1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 44,
+   "id": "d434ee9b",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>building_id</th>\n",
+       "      <th>geo_level_1_id</th>\n",
+       "      <th>geo_level_2_id</th>\n",
+       "      <th>geo_level_3_id</th>\n",
+       "      <th>count_floors_pre_eq</th>\n",
+       "      <th>age</th>\n",
+       "      <th>area_percentage</th>\n",
+       "      <th>height_percentage</th>\n",
+       "      <th>has_superstructure_adobe_mud</th>\n",
+       "      <th>has_superstructure_mud_mortar_stone</th>\n",
+       "      <th>...</th>\n",
+       "      <th>has_secondary_use_agriculture</th>\n",
+       "      <th>has_secondary_use_hotel</th>\n",
+       "      <th>has_secondary_use_rental</th>\n",
+       "      <th>has_secondary_use_institution</th>\n",
+       "      <th>has_secondary_use_school</th>\n",
+       "      <th>has_secondary_use_industry</th>\n",
+       "      <th>has_secondary_use_health_post</th>\n",
+       "      <th>has_secondary_use_gov_office</th>\n",
+       "      <th>has_secondary_use_use_police</th>\n",
+       "      <th>has_secondary_use_other</th>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>damage_grade</th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>527331.748086</td>\n",
+       "      <td>17.315414</td>\n",
+       "      <td>652.465825</td>\n",
+       "      <td>6278.913690</td>\n",
+       "      <td>1.839968</td>\n",
+       "      <td>10.304871</td>\n",
+       "      <td>9.714732</td>\n",
+       "      <td>5.146643</td>\n",
+       "      <td>0.023171</td>\n",
+       "      <td>0.347124</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0.033113</td>\n",
+       "      <td>0.088314</td>\n",
+       "      <td>0.034997</td>\n",
+       "      <td>0.003929</td>\n",
+       "      <td>0.001203</td>\n",
+       "      <td>0.002365</td>\n",
+       "      <td>0.000481</td>\n",
+       "      <td>0.000521</td>\n",
+       "      <td>0.000160</td>\n",
+       "      <td>0.006975</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>524845.921058</td>\n",
+       "      <td>13.361212</td>\n",
+       "      <td>698.330012</td>\n",
+       "      <td>6221.646412</td>\n",
+       "      <td>2.131053</td>\n",
+       "      <td>21.947171</td>\n",
+       "      <td>8.032583</td>\n",
+       "      <td>5.430475</td>\n",
+       "      <td>0.093375</td>\n",
+       "      <td>0.768864</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0.072207</td>\n",
+       "      <td>0.034048</td>\n",
+       "      <td>0.007000</td>\n",
+       "      <td>0.000875</td>\n",
+       "      <td>0.000319</td>\n",
+       "      <td>0.001031</td>\n",
+       "      <td>0.000217</td>\n",
+       "      <td>0.000142</td>\n",
+       "      <td>0.000081</td>\n",
+       "      <td>0.005765</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>526725.606595</td>\n",
+       "      <td>13.820717</td>\n",
+       "      <td>719.203480</td>\n",
+       "      <td>6317.260788</td>\n",
+       "      <td>2.209469</td>\n",
+       "      <td>23.484377</td>\n",
+       "      <td>7.502896</td>\n",
+       "      <td>5.520667</td>\n",
+       "      <td>0.098608</td>\n",
+       "      <td>0.869594</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0.060256</td>\n",
+       "      <td>0.017126</td>\n",
+       "      <td>0.002096</td>\n",
+       "      <td>0.000196</td>\n",
+       "      <td>0.000196</td>\n",
+       "      <td>0.000783</td>\n",
+       "      <td>0.000058</td>\n",
+       "      <td>0.000046</td>\n",
+       "      <td>0.000081</td>\n",
+       "      <td>0.003536</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>3 rows × 31 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                building_id  geo_level_1_id  geo_level_2_id  geo_level_3_id  count_floors_pre_eq        age  area_percentage  height_percentage  has_superstructure_adobe_mud  has_superstructure_mud_mortar_stone  ...  has_secondary_use_agriculture  has_secondary_use_hotel  has_secondary_use_rental  has_secondary_use_institution  has_secondary_use_school  has_secondary_use_industry  has_secondary_use_health_post  has_secondary_use_gov_office  has_secondary_use_use_police  has_secondary_use_other\n",
+       "damage_grade                                                                                                                                                                                                        ...                                                                                                                                                                                                                                                                                           \n",
+       "1             527331.748086       17.315414      652.465825     6278.913690             1.839968  10.304871         9.714732           5.146643                      0.023171                             0.347124  ...                       0.033113                 0.088314                  0.034997                       0.003929                  0.001203                    0.002365                       0.000481                      0.000521                      0.000160                 0.006975\n",
+       "2             524845.921058       13.361212      698.330012     6221.646412             2.131053  21.947171         8.032583           5.430475                      0.093375                             0.768864  ...                       0.072207                 0.034048                  0.007000                       0.000875                  0.000319                    0.001031                       0.000217                      0.000142                      0.000081                 0.005765\n",
+       "3             526725.606595       13.820717      719.203480     6317.260788             2.209469  23.484377         7.502896           5.520667                      0.098608                             0.869594  ...                       0.060256                 0.017126                  0.002096                       0.000196                  0.000196                    0.000783                       0.000058                      0.000046                      0.000081                 0.003536\n",
+       "\n",
+       "[3 rows x 31 columns]"
+      ]
+     },
+     "execution_count": 44,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df1.groupby('damage_grade').mean()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "id": "a402d1f8-0ac9-4b7f-915c-d0540dc9bec1",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "             means  nrs\n",
+      "building_id            \n",
+      "4              2.0    1\n",
+      "8              3.0    1\n",
+      "12             3.0    1\n",
+      "16             2.0    1\n",
+      "17             2.0    1\n",
+      "...            ...  ...\n",
+      "1052921        2.0    1\n",
+      "1052926        2.0    1\n",
+      "1052929        3.0    1\n",
+      "1052931        3.0    1\n",
+      "1052934        3.0    1\n",
+      "\n",
+      "[260601 rows x 2 columns]\n",
+      "                   means    nrs\n",
+      "geo_level_1_id                 \n",
+      "0               2.065320   4011\n",
+      "1               1.960755   2701\n",
+      "2               2.162191    931\n",
+      "3               2.331565   7540\n",
+      "4               2.162136  14568\n",
+      "5               1.919703   2690\n",
+      "6               2.161724  24381\n",
+      "7               2.297726  18994\n",
+      "8               2.485273  19080\n",
+      "9               2.026023   3958\n",
+      "10              2.341954  22079\n",
+      "11              2.337713   8220\n",
+      "12              2.152160   3194\n",
+      "13              1.937656   9608\n",
+      "14              2.049592   1714\n",
+      "15              2.138362   2320\n",
+      "16              2.171745   4332\n",
+      "17              2.794480  21813\n",
+      "18              2.708373   3189\n",
+      "19              2.061828    372\n",
+      "20              1.926464  17216\n",
+      "21              2.563369  14889\n",
+      "22              2.000960   6252\n",
+      "23              2.186441   1121\n",
+      "24              1.894656   1310\n",
+      "25              2.054054   5624\n",
+      "26              1.730887  22615\n",
+      "27              2.446457  12532\n",
+      "28              2.407547    265\n",
+      "29              2.078283    396\n",
+      "30              2.020477   2686\n",
+      "                   means  nrs\n",
+      "geo_level_2_id               \n",
+      "0               2.763158   38\n",
+      "1               2.348039  204\n",
+      "3               2.103896   77\n",
+      "4               2.520635  315\n",
+      "5               2.160000   25\n",
+      "...                  ...  ...\n",
+      "1423            2.000000    3\n",
+      "1424            2.000000    7\n",
+      "1425            2.699571  466\n",
+      "1426            2.793706  286\n",
+      "1427            2.833333    6\n",
+      "\n",
+      "[1414 rows x 2 columns]\n",
+      "                   means  nrs\n",
+      "geo_level_3_id               \n",
+      "0               3.000000    2\n",
+      "1               2.500000    6\n",
+      "3               1.888889    9\n",
+      "5               1.142857   14\n",
+      "6               2.523810   21\n",
+      "...                  ...  ...\n",
+      "12562           2.000000    3\n",
+      "12563           2.041667   24\n",
+      "12564           2.000000    6\n",
+      "12565           1.285714    7\n",
+      "12567           2.000000    1\n",
+      "\n",
+      "[11595 rows x 2 columns]\n",
+      "                        means     nrs\n",
+      "count_floors_pre_eq                  \n",
+      "1                    2.042160   40441\n",
+      "2                    2.239231  156623\n",
+      "3                    2.396713   55617\n",
+      "4                    2.117257    5424\n",
+      "5                    2.114426    2246\n",
+      "6                    1.856459     209\n",
+      "7                    1.846154      39\n",
+      "8                    2.000000       1\n",
+      "9                    1.000000       1\n",
+      "        means    nrs\n",
+      "age                 \n",
+      "0    1.957529  26041\n",
+      "5    2.103481  33697\n",
+      "10   2.200689  38896\n",
+      "15   2.263455  36010\n",
+      "20   2.300510  32182\n",
+      "25   2.329599  24366\n",
+      "30   2.349678  18028\n",
+      "35   2.351074  10710\n",
+      "40   2.369827  10559\n",
+      "45   2.354277   4711\n",
+      "50   2.380460   7257\n",
+      "55   2.358091   2033\n",
+      "60   2.372370   3612\n",
+      "65   2.352627   1123\n",
+      "70   2.365063   1975\n",
+      "75   2.349609    512\n",
+      "80   2.405892   3055\n",
+      "85   2.332940    847\n",
+      "90   2.348387   1085\n",
+      "95   2.357488    414\n",
+      "100  2.317449   1364\n",
+      "105  2.348315     89\n",
+      "110  2.340000    100\n",
+      "115  2.428571     21\n",
+      "120  2.433333    180\n",
+      "125  2.297297     37\n",
+      "130  2.666667      9\n",
+      "135  1.800000      5\n",
+      "140  2.111111      9\n",
+      "145  2.000000      3\n",
+      "150  2.302817    142\n",
+      "155  3.000000      1\n",
+      "160  2.500000      6\n",
+      "165  2.000000      2\n",
+      "170  2.333333      6\n",
+      "175  2.400000      5\n",
+      "180  2.285714      7\n",
+      "185  2.000000      1\n",
+      "190  2.333333      3\n",
+      "195  2.000000      2\n",
+      "200  2.339623    106\n",
+      "995  2.151079   1390\n",
+      "                    means    nrs\n",
+      "area_percentage                 \n",
+      "1                2.188889     90\n",
+      "2                2.214398   3181\n",
+      "3                2.280139  11837\n",
+      "4                2.261281  19236\n",
+      "5                2.306503  32724\n",
+      "...                   ...    ...\n",
+      "85               2.250000      4\n",
+      "86               1.400000      5\n",
+      "90               2.000000      1\n",
+      "96               2.000000      3\n",
+      "100              2.000000      1\n",
+      "\n",
+      "[84 rows x 2 columns]\n",
+      "                      means    nrs\n",
+      "height_percentage                 \n",
+      "2                  2.156905   9305\n",
+      "3                  2.002966  25957\n",
+      "4                  2.221698  37763\n",
+      "5                  2.270019  78513\n",
+      "6                  2.303354  46477\n",
+      "7                  2.319188  35465\n",
+      "8                  2.336426  13902\n",
+      "9                  2.113095   5376\n",
+      "10                 2.114871   4492\n",
+      "11                 2.217012    917\n",
+      "12                 1.793826    907\n",
+      "13                 1.831357    759\n",
+      "14                 1.757576     66\n",
+      "15                 1.688356    292\n",
+      "16                 1.681564    179\n",
+      "17                 1.888889      9\n",
+      "18                 1.732394     71\n",
+      "19                 1.714286      7\n",
+      "20                 1.666667     33\n",
+      "21                 1.769231     13\n",
+      "23                 2.181818     11\n",
+      "24                 2.250000      4\n",
+      "25                 2.666667      3\n",
+      "26                 2.500000      2\n",
+      "28                 2.500000      2\n",
+      "31                 2.000000      1\n",
+      "32                 2.986667     75\n",
+      "                           means     nrs\n",
+      "land_surface_condition                  \n",
+      "n                       2.251407   35528\n",
+      "o                       2.289081    8316\n",
+      "t                       2.234170  216757\n",
+      "                    means     nrs\n",
+      "foundation_type                  \n",
+      "h                2.105663    1448\n",
+      "i                1.453351   10579\n",
+      "r                2.329573  219196\n",
+      "u                1.883661   14260\n",
+      "w                1.810954   15118\n",
+      "              means     nrs\n",
+      "roof_type                  \n",
+      "n          2.269637  182842\n",
+      "q          2.320173   61576\n",
+      "x          1.572267   16183\n",
+      "                      means     nrs\n",
+      "ground_floor_type                  \n",
+      "f                  2.309104  209619\n",
+      "m                  1.970472     508\n",
+      "v                  1.634205   24593\n",
+      "x                  2.250714   24877\n",
+      "z                  2.073705    1004\n",
+      "                     means     nrs\n",
+      "other_floor_type                  \n",
+      "j                 2.042893   39843\n",
+      "q                 2.315751  165282\n",
+      "s                 1.607416   12028\n",
+      "x                 2.297344   43448\n",
+      "             means     nrs\n",
+      "position                  \n",
+      "j         2.153064   13282\n",
+      "o         2.207458    2333\n",
+      "s         2.229131  202090\n",
+      "t         2.309399   42896\n",
+      "                       means     nrs\n",
+      "plan_configuration                  \n",
+      "a                   1.853175     252\n",
+      "c                   1.836923     325\n",
+      "d                   2.243646  250072\n",
+      "f                   2.272727      22\n",
+      "m                   1.913043      46\n",
+      "n                   2.157895      38\n",
+      "o                   1.893082     159\n",
+      "q                   2.271434    5692\n",
+      "s                   2.049133     346\n",
+      "u                   1.918334    3649\n",
+      "                                 means     nrs\n",
+      "has_superstructure_adobe_mud                  \n",
+      "0                             2.227718  237500\n",
+      "1                             2.346782   23101\n",
+      "                                        means     nrs\n",
+      "has_superstructure_mud_mortar_stone                  \n",
+      "0                                    1.919407   62040\n",
+      "1                                    2.337901  198561\n",
+      "                                  means     nrs\n",
+      "has_superstructure_stone_flag                  \n",
+      "0                              2.230654  251654\n",
+      "1                              2.452554    8947\n",
+      "                                           means     nrs\n",
+      "has_superstructure_cement_mortar_stone                  \n",
+      "0                                       2.243300  255849\n",
+      "1                                       1.967593    4752\n",
+      "                                        means     nrs\n",
+      "has_superstructure_mud_mortar_brick                  \n",
+      "0                                    2.235863  242840\n",
+      "1                                    2.271212   17761\n",
+      "                                           means     nrs\n",
+      "has_superstructure_cement_mortar_brick                  \n",
+      "0                                       2.282631  240986\n",
+      "1                                       1.693296   19615\n",
+      "                              means     nrs\n",
+      "has_superstructure_timber                  \n",
+      "0                          2.263274  194151\n",
+      "1                          2.165222   66450\n",
+      "                              means     nrs\n",
+      "has_superstructure_bamboo                  \n",
+      "0                          2.250030  238447\n",
+      "1                          2.111718   22154\n",
+      "                                         means     nrs\n",
+      "has_superstructure_rc_non_engineered                  \n",
+      "0                                     2.258679  249502\n",
+      "1                                     1.779530   11099\n",
+      "                                     means     nrs\n",
+      "has_superstructure_rc_engineered                  \n",
+      "0                                 2.252176  256468\n",
+      "1                                 1.375514    4133\n",
+      "                             means     nrs\n",
+      "has_superstructure_other                  \n",
+      "0                         2.240553  256696\n",
+      "1                         2.088348    3905\n",
+      "                           means     nrs\n",
+      "legal_ownership_status                  \n",
+      "a                       1.894049    5512\n",
+      "r                       2.217244    1473\n",
+      "v                       2.244063  250939\n",
+      "w                       2.415764    2677\n",
+      "                   means     nrs\n",
+      "count_families                  \n",
+      "0               2.104257   20862\n",
+      "1               2.246406  226115\n",
+      "2               2.320081   11294\n",
+      "3               2.263041    1802\n",
+      "4               2.236504     389\n",
+      "5               2.182692     104\n",
+      "6               2.272727      22\n",
+      "7               1.857143       7\n",
+      "8               1.500000       2\n",
+      "9               1.750000       4\n",
+      "                      means     nrs\n",
+      "has_secondary_use                  \n",
+      "0                  2.255564  231445\n",
+      "1                  2.101008   29156\n",
+      "                                  means     nrs\n",
+      "has_secondary_use_agriculture                  \n",
+      "0                              2.236457  243824\n",
+      "1                              2.264648   16777\n",
+      "                            means     nrs\n",
+      "has_secondary_use_hotel                  \n",
+      "0                        2.249450  251838\n",
+      "1                        1.917038    8763\n",
+      "                             means     nrs\n",
+      "has_secondary_use_rental                  \n",
+      "0                         2.242903  258490\n",
+      "1                         1.671246    2111\n",
+      "                                  means     nrs\n",
+      "has_secondary_use_institution                  \n",
+      "0                              2.238811  260356\n",
+      "1                              1.665306     245\n",
+      "                             means     nrs\n",
+      "has_secondary_use_school                  \n",
+      "0                         2.238408  260507\n",
+      "1                         1.861702      94\n",
+      "                               means     nrs\n",
+      "has_secondary_use_industry                  \n",
+      "0                           2.238493  260322\n",
+      "1                           2.032258     279\n",
+      "                                  means     nrs\n",
+      "has_secondary_use_health_post                  \n",
+      "0                              2.238344  260552\n",
+      "1                              1.857143      49\n",
+      "                                 means     nrs\n",
+      "has_secondary_use_gov_office                  \n",
+      "0                             2.238342  260563\n",
+      "1                             1.763158      38\n",
+      "                                 means     nrs\n",
+      "has_secondary_use_use_police                  \n",
+      "0                             2.238282  260578\n",
+      "1                             2.130435      23\n",
+      "                            means     nrs\n",
+      "has_secondary_use_other                  \n",
+      "0                        2.238989  259267\n",
+      "1                        2.098951    1334\n",
+      "              means     nrs\n",
+      "damage_grade               \n",
+      "1               1.0   25124\n",
+      "2               2.0  148259\n",
+      "3               3.0   87218\n"
+     ]
+    }
+   ],
+   "source": [
+    "for col in df1.columns:\n",
+    "    print(df1.groupby(col)['damage_grade'].agg(means='mean',nrs='count'))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 16,
+   "id": "23572551",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Baseline Model - No scaling, Logistic regression\n",
+    "# Pipeline to prevent data leakage"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "id": "e969b4b3",
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "NameError",
+     "evalue": "name 'StandardScaler' is not defined",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[1;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[1;31mNameError\u001b[0m                                 Traceback (most recent call last)",
+      "Input \u001b[1;32mIn [14]\u001b[0m, in \u001b[0;36m<cell line: 1>\u001b[1;34m()\u001b[0m\n\u001b[1;32m----> 1\u001b[0m pipe \u001b[38;5;241m=\u001b[39m make_pipeline(\u001b[43mStandardScaler\u001b[49m(), LogisticRegression(max_iter \u001b[38;5;241m=\u001b[39m \u001b[38;5;241m1000\u001b[39m))\n\u001b[0;32m      2\u001b[0m param_grid_logreg \u001b[38;5;241m=\u001b[39m {\u001b[38;5;124m\"\u001b[39m\u001b[38;5;124mlogisticregression__C\u001b[39m\u001b[38;5;124m\"\u001b[39m: [\u001b[38;5;241m0.1\u001b[39m, \u001b[38;5;241m1\u001b[39m, \u001b[38;5;241m10\u001b[39m, \u001b[38;5;241m100\u001b[39m, \u001b[38;5;241m1000\u001b[39m]}\n\u001b[0;32m      3\u001b[0m grid_logreg \u001b[38;5;241m=\u001b[39m GridSearchCV(estimator \u001b[38;5;241m=\u001b[39m pipe, param_grid\u001b[38;5;241m=\u001b[39mparam_grid_logreg, cv\u001b[38;5;241m=\u001b[39m\u001b[38;5;241m5\u001b[39m)\n",
+      "\u001b[1;31mNameError\u001b[0m: name 'StandardScaler' is not defined"
+     ]
+    }
+   ],
+   "source": [
+    "pipe = make_pipeline(StandardScaler(), LogisticRegression(max_iter = 1000))\n",
+    "param_grid_logreg = {\"logisticregression__C\": [0.1, 1, 10, 100, 1000]}\n",
+    "grid_logreg = GridSearchCV(estimator = pipe, param_grid=param_grid_logreg, cv=5)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 15,
+   "id": "2b3f3dd1",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\Lucian\\Anaconda3\\envs\\torchenv\\lib\\site-packages\\category_encoders\\target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "C:\\Users\\Lucian\\Anaconda3\\envs\\torchenv\\lib\\site-packages\\category_encoders\\target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n"
+     ]
+    }
+   ],
+   "source": [
+    "pipe3 = make_pipeline(TargetEncoder(), LogisticRegression())\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 62,
+   "id": "7163f614",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/sklearn/linear_model/_logistic.py:814: ConvergenceWarning: lbfgs failed to converge (status=1):\n",
+      "STOP: TOTAL NO. of ITERATIONS REACHED LIMIT.\n",
+      "\n",
+      "Increase the number of iterations (max_iter) or scale the data as shown in:\n",
+      "    https://scikit-learn.org/stable/modules/preprocessing.html\n",
+      "Please also refer to the documentation for alternative solver options:\n",
+      "    https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression\n",
+      "  n_iter_i = _check_optimize_result(\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "array([2, 2, 2, ..., 2, 2, 2])"
+      ]
+     },
+     "execution_count": 62,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "X_train, X_test, y_train, y_test = train_test_split(\n",
+    "    features.drop(columns=['building_id']), target['damage_grade'], train_size=0.7, random_state=42\n",
+    ")\n",
+    "kfold = KFold(n_splits=5, shuffle=True, random_state=42)\n",
+    "pipe_grid ={'logisticregression__C': [0.01, 0.1, 1, 10, 100, 1000],}\n",
+    "\n",
+    "\n",
+    "# Instantiate the grid\n",
+    "pipe_cv = GridSearchCV(\n",
+    "    pipe3,\n",
+    "    param_grid=pipe_grid,\n",
+    "    n_jobs=-1,\n",
+    "    cv=kfold,\n",
+    ")\n",
+    "\n",
+    "pipe_cv.fit(X_train, y_train)\n",
+    "\n",
+    "# Add some unseen category to the test.\n",
+    "pipe_cv.predict(X_test)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 63,
+   "id": "4fd17fc3",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "0.5693016116653875"
+      ]
+     },
+     "execution_count": 63,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pipe_cv.best_score_"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "3b83cf78",
+   "metadata": {},
+   "source": [
+    "# Baseline Score: 56.93%"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "330785f5",
+   "metadata": {},
+   "source": [
+    "# Adaboost"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 18,
+   "id": "c6b88208",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Using a different algorithm and scaling the data"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "id": "d4d71fb4",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "pipe4 = make_pipeline(TargetEncoder(), MinMaxScaler(), AdaBoostClassifier())\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 19,
+   "id": "9749327d",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\Lucian\\Anaconda3\\envs\\torchenv\\lib\\site-packages\\category_encoders\\target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "C:\\Users\\Lucian\\Anaconda3\\envs\\torchenv\\lib\\site-packages\\category_encoders\\target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "GridSearchCV(cv=KFold(n_splits=5, random_state=42, shuffle=True),\n",
+       "             estimator=Pipeline(steps=[('targetencoder', TargetEncoder()),\n",
+       "                                       ('minmaxscaler', MinMaxScaler()),\n",
+       "                                       ('adaboostclassifier',\n",
+       "                                        AdaBoostClassifier())]),\n",
+       "             n_jobs=-1,\n",
+       "             param_grid={'adaboostclassifier__n_estimators': [10, 20, 30]})"
+      ]
+     },
+     "execution_count": 19,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "X_train, X_test, y_train, y_test = train_test_split(\n",
+    "    features.drop(columns=['building_id']), target['damage_grade'], train_size=0.7, random_state=42\n",
+    ")\n",
+    "kfold = KFold(n_splits=5, shuffle=True, random_state=42)\n",
+    "\n",
+    "pipe_grid ={'adaboostclassifier__n_estimators': [10,20,30],}\n",
+    "\n",
+    "\n",
+    "\n",
+    "# Instantiate the grid\n",
+    "pipe_cv = GridSearchCV(\n",
+    "    pipe4,\n",
+    "    param_grid=pipe_grid,\n",
+    "    n_jobs=-1,\n",
+    "    cv=kfold,\n",
+    ")\n",
+    "\n",
+    "pipe_cv.fit(X_train, y_train)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 20,
+   "id": "946ac34b",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([2, 2, 2, ..., 2, 2, 2], dtype=int64)"
+      ]
+     },
+     "execution_count": 20,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pipe_cv.predict(X_test)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 21,
+   "id": "bf3e2307",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "0.6373369148119725"
+      ]
+     },
+     "execution_count": 21,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pipe_cv.best_score_"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "7f5f00ec",
+   "metadata": {},
+   "source": [
+    "# Adaboost score = 63.73%"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 97,
+   "id": "e600f5ef",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n"
+     ]
+    }
+   ],
+   "source": [
+    "pipe5 = make_pipeline(TargetEncoder(), MinMaxScaler(), AdaBoostClassifier())\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 98,
+   "id": "81d7050d",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "GridSearchCV(cv=KFold(n_splits=10, random_state=42, shuffle=True),\n",
+       "             estimator=Pipeline(steps=[('targetencoder', TargetEncoder()),\n",
+       "                                       ('minmaxscaler', MinMaxScaler()),\n",
+       "                                       ('adaboostclassifier',\n",
+       "                                        AdaBoostClassifier())]),\n",
+       "             n_jobs=-1,\n",
+       "             param_grid={'adaboostclassifier__learning_rate': [1, 10, 20],\n",
+       "                         'adaboostclassifier__n_estimators': [10, 20, 30]})"
+      ]
+     },
+     "execution_count": 98,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "X_train, X_test, y_train, y_test = train_test_split(\n",
+    "    features.drop(columns=['building_id']), target['damage_grade'], train_size=0.7, random_state=42\n",
+    ")\n",
+    "kfold = KFold(n_splits=10, shuffle=True, random_state=42)\n",
+    "\n",
+    "pipe_grid ={'adaboostclassifier__n_estimators': [10,20,30],\n",
+    "            'adaboostclassifier__learning_rate':[1,10,20], \n",
+    "           }\n",
+    "\n",
+    "\n",
+    "\n",
+    "# Instantiate the grid\n",
+    "pipe_cv = GridSearchCV(\n",
+    "    pipe5,\n",
+    "    param_grid=pipe_grid,\n",
+    "    n_jobs=-1,\n",
+    "    cv=kfold,\n",
+    ")\n",
+    "\n",
+    "pipe_cv.fit(X_train, y_train)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 95,
+   "id": "1cd35132",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([2, 2, 2, ..., 2, 2, 2])"
+      ]
+     },
+     "execution_count": 95,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pipe_cv.predict(X_test)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 96,
+   "id": "a2f00a9f",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "0.6373369148119725"
+      ]
+     },
+     "execution_count": 96,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pipe_cv.best_score_"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "2791d597",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Hyper parameter tuning has improved our model to 63%"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "c33e3aa6",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Changing geo data to categorical"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 104,
+   "id": "61b290c8",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "features1 = features"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 106,
+   "id": "d050051a",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "features1 = features1.astype({\"geo_level_1_id\":'category', \"geo_level_2_id\":\"category\", \n",
+    "                              \"geo_level_3_id\": \"category\"})"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 108,
+   "id": "452b12ac",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Geo data pipe"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 149,
+   "id": "981bc63f",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "0.7245751562328693"
+      ]
+     },
+     "execution_count": 149,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pipe6 = make_pipeline(TargetEncoder(), MinMaxScaler(), AdaBoostClassifier())\n",
+    "\n",
+    "X_train, X_test, y_train, y_test = train_test_split(\n",
+    "    features1.drop(columns=['building_id']), target['damage_grade'], train_size=0.7, random_state=42\n",
+    ")\n",
+    "kfold = KFold(n_splits=5, shuffle=True, random_state=42)\n",
+    "\n",
+    "pipe_grid ={'adaboostclassifier__n_estimators': [500,750],\n",
+    "            'adaboostclassifier__learning_rate':[1,10,20], \n",
+    "           \n",
+    "           }\n",
+    "\n",
+    "\n",
+    "\n",
+    "# Instantiate the grid\n",
+    "pipe_cv = GridSearchCV(\n",
+    "    pipe6,\n",
+    "    param_grid=pipe_grid,\n",
+    "    n_jobs=-1,\n",
+    "    cv=kfold,\n",
+    ")\n",
+    "\n",
+    "pipe_cv.fit(X_train, y_train)\n",
+    "\n",
+    "pipe_cv.predict(X_test)\n",
+    "\n",
+    "pipe_cv.best_score_"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 150,
+   "id": "c1862342",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'adaboostclassifier__learning_rate': 1,\n",
+       " 'adaboostclassifier__n_estimators': 750}"
+      ]
+     },
+     "execution_count": 150,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pipe_cv.best_params_"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "5312c1ad",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# 0.7169663414099331 - low n estimators (10,20,30)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 112,
+   "id": "1b8174cf",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "##0.7245751562328693 - {'adaboostclassifier__learning_rate': 1,\n",
+    " #'adaboostclassifier__n_estimators': 750}\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "f58a2541",
+   "metadata": {},
+   "source": [
+    "# Different Encoders"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 115,
+   "id": "e4867977",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Cat Boost"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 137,
+   "id": "df39e592",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "0.7093081898914593"
+      ]
+     },
+     "execution_count": 137,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pipe7 = make_pipeline(CatBoostEncoder(), MinMaxScaler(), AdaBoostClassifier())\n",
+    "\n",
+    "X_train, X_test, y_train, y_test = train_test_split(\n",
+    "    features1.drop(columns=['building_id']), target['damage_grade'], train_size=0.7, random_state=42\n",
+    ")\n",
+    "kfold = KFold(n_splits=5, shuffle=True, random_state=42)\n",
+    "\n",
+    "pipe_grid ={'adaboostclassifier__n_estimators': [10,20,30],\n",
+    "            'adaboostclassifier__learning_rate':[0.01,0.1,1,10,20], \n",
+    "           \n",
+    "           }\n",
+    "\n",
+    "\n",
+    "\n",
+    "# Instantiate the grid\n",
+    "pipe_cv = GridSearchCV(\n",
+    "    pipe7,\n",
+    "    param_grid=pipe_grid,\n",
+    "    n_jobs=-1,\n",
+    "    cv=kfold,\n",
+    ")\n",
+    "\n",
+    "pipe_cv.fit(X_train, y_train)\n",
+    "\n",
+    "pipe_cv.predict(X_test)\n",
+    "\n",
+    "pipe_cv.best_score_"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 138,
+   "id": "a5c23839",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'adaboostclassifier__learning_rate': 1,\n",
+       " 'adaboostclassifier__n_estimators': 30}"
+      ]
+     },
+     "execution_count": 138,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pipe_cv.best_params_"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 272,
+   "id": "0017d432",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# No improvements with cat boost "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 127,
+   "id": "f843b9ab",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# GLMME Encoding"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 147,
+   "id": "bc033a92",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "0.7236377590176516"
+      ]
+     },
+     "execution_count": 147,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pipe8 = make_pipeline(GLMMEncoder(), MinMaxScaler(), AdaBoostClassifier())\n",
+    "\n",
+    "X_train, X_test, y_train, y_test = train_test_split(\n",
+    "    features1.drop(columns=['building_id']), target['damage_grade'], train_size=0.7, random_state=42\n",
+    ")\n",
+    "kfold = KFold(n_splits=5, shuffle=True, random_state=42)\n",
+    "\n",
+    "pipe_grid ={'adaboostclassifier__n_estimators': [750,1000],\n",
+    "            'adaboostclassifier__learning_rate':[1], \n",
+    "           \n",
+    "           }\n",
+    "\n",
+    "\n",
+    "\n",
+    "# Instantiate the grid\n",
+    "pipe_cv = GridSearchCV(\n",
+    "    pipe8,\n",
+    "    param_grid=pipe_grid,\n",
+    "    n_jobs=-1,\n",
+    "    cv=kfold,\n",
+    ")\n",
+    "\n",
+    "pipe_cv.fit(X_train, y_train)\n",
+    "\n",
+    "pipe_cv.predict(X_test)\n",
+    "\n",
+    "pipe_cv.best_score_"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 148,
+   "id": "9a43b2b8",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'adaboostclassifier__learning_rate': 1,\n",
+       " 'adaboostclassifier__n_estimators': 750}"
+      ]
+     },
+     "execution_count": 148,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pipe_cv.best_params_"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "19dc3c2d",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Better performance than catboost but not as good as Target Encoder"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 129,
+   "id": "baf59439",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# James Stein"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 133,
+   "id": "351d8288",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "0.7127233855936849"
+      ]
+     },
+     "execution_count": 133,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pipe9 = make_pipeline(JamesSteinEncoder(), MinMaxScaler(), AdaBoostClassifier())\n",
+    "\n",
+    "X_train, X_test, y_train, y_test = train_test_split(\n",
+    "    features1.drop(columns=['building_id']), target['damage_grade'], train_size=0.7, random_state=42\n",
+    ")\n",
+    "kfold = KFold(n_splits=5, shuffle=True, random_state=42)\n",
+    "\n",
+    "pipe_grid ={'adaboostclassifier__n_estimators': [10,20,30],\n",
+    "            'adaboostclassifier__learning_rate':[1,10,20], \n",
+    "           \n",
+    "           }\n",
+    "\n",
+    "\n",
+    "\n",
+    "# Instantiate the grid\n",
+    "pipe_cv = GridSearchCV(\n",
+    "    pipe9,\n",
+    "    param_grid=pipe_grid,\n",
+    "    n_jobs=-1,\n",
+    "    cv=kfold,\n",
+    ")\n",
+    "\n",
+    "pipe_cv.fit(X_train, y_train)\n",
+    "\n",
+    "pipe_cv.predict(X_test)\n",
+    "\n",
+    "pipe_cv.best_score_"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "96c0f05c",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Not as good as GLMME "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "239dba0a",
+   "metadata": {},
+   "source": [
+    "# Different Algorithms"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 182,
+   "id": "ba10cd38",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "target_xgb = target"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "cf3f5bec",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# XGBoost only reads 0,1,2 in the y so data had to be trasformed from 1,2,3 to fix this."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 184,
+   "id": "3f1409ff",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "target_xgb[\"damage_grade\"] = target_xgb[\"damage_grade\"]-1"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 197,
+   "id": "44710954",
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "0.7395406205459928"
+      ]
+     },
+     "execution_count": 197,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pipe9 = make_pipeline(TargetEncoder(), MinMaxScaler(), XGBClassifier())\n",
+    "\n",
+    "X_train, X_test, y_train, y_test = train_test_split(\n",
+    "    features1.drop(columns=['building_id']), target_xgb['damage_grade'], train_size=0.7, random_state=42\n",
+    ")\n",
+    "kfold = KFold(n_splits=5, shuffle=True, random_state=42)\n",
+    "\n",
+    "pipe_grid ={'xgbclassifier__n_estimators': [150],\n",
+    "            'xgbclassifier__learning_rate':[0.3],\n",
+    "            'xgbclassifier__max_depth':[10],\n",
+    "            'xgbclassifier__subsample':[0.8, 1],\n",
+    "            'xgbclassifier__colsample_bytree':[0.8,1]\n",
+    "           \n",
+    "           }\n",
+    "\n",
+    "\n",
+    "\n",
+    "# Instantiate the grid\n",
+    "pipe_cv = GridSearchCV(\n",
+    "    pipe9,\n",
+    "    param_grid=pipe_grid,\n",
+    "    n_jobs=-1,\n",
+    "    cv=kfold,\n",
+    ")\n",
+    "\n",
+    "pipe_cv.fit(X_train, y_train)\n",
+    "\n",
+    "pipe_cv.predict(X_test)\n",
+    "\n",
+    "pipe_cv.best_score_"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "dbd96969",
+   "metadata": {},
+   "source": [
+    "pipe_cv.best_params_\n",
+    "{'xgbclassifier__colsample_bytree': 0.8,\n",
+    " 'xgbclassifier__learning_rate': 0.3,\n",
+    " 'xgbclassifier__max_depth': 10,\n",
+    " 'xgbclassifier__n_estimators': 150,\n",
+    " 'xgbclassifier__subsample': 1}\n",
+    " 0.7395406205459928\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 187,
+   "id": "5c1d47c7",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'xgbclassifier__learning_rate': 0.3,\n",
+       " 'xgbclassifier__max_depth': 7,\n",
+       " 'xgbclassifier__n_estimators': 100}"
+      ]
+     },
+     "execution_count": 187,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pipe_cv.best_params_"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 200,
+   "id": "3a454081",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "0.7395406205459928"
+      ]
+     },
+     "execution_count": 200,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pipe_cv.best_params_\n",
+    "pipe_cv.best_score_"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 208,
+   "id": "a7ca57c1",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "new_df1['damage_grade'] = new_df1['damage_grade']+1\n",
+    "new_df1.to_csv(\"xgb_prediction_new_new_new.csv\", index=False)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 215,
+   "id": "e486f924",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "{'xgbclassifier__colsample_bytree': 0.7,\n",
+       " 'xgbclassifier__learning_rate': 0.3,\n",
+       " 'xgbclassifier__max_depth': 10,\n",
+       " 'xgbclassifier__min_child_weight': 2,\n",
+       " 'xgbclassifier__n_estimators': 150,\n",
+       " 'xgbclassifier__subsample': 1}"
+      ]
+     },
+     "execution_count": 215,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pipe10 = make_pipeline(TargetEncoder(), MinMaxScaler(), XGBClassifier())\n",
+    "\n",
+    "X_train, X_test, y_train, y_test = train_test_split(\n",
+    "    features1.drop(columns=['building_id']), target_xgb['damage_grade'], train_size=0.7, random_state=42\n",
+    ")\n",
+    "kfold = KFold(n_splits=5, shuffle=True, random_state=42)\n",
+    "\n",
+    "pipe_grid ={'xgbclassifier__n_estimators': [150],\n",
+    "            'xgbclassifier__learning_rate':[0.3],\n",
+    "            'xgbclassifier__max_depth':[10],\n",
+    "            'xgbclassifier__subsample':[1],\n",
+    "            'xgbclassifier__colsample_bytree':[0.7,0.8],\n",
+    "            'xgbclassifier__min_child_weight':[1,2]\n",
+    "           \n",
+    "           }\n",
+    "\n",
+    "\n",
+    "\n",
+    "# Instantiate the grid\n",
+    "pipe_cv = GridSearchCV(\n",
+    "    pipe10,\n",
+    "    param_grid=pipe_grid,\n",
+    "    n_jobs=-1,\n",
+    "    cv=kfold,\n",
+    ")\n",
+    "\n",
+    "pipe_cv.fit(X_train, y_train)\n",
+    "\n",
+    "pipe_cv.predict(X_test)\n",
+    "\n",
+    "pipe_cv.best_score_\n",
+    "pipe_cv.best_params_\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "bef6b4f6",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Our best performing hyper parameters so far."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 217,
+   "id": "0c2c545c",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Changing age into a Category"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 221,
+   "id": "d623f58a",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "features2 = features1"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 228,
+   "id": "60e93685",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "features2 = features1"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 229,
+   "id": "e43ae787",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "features2 = features2.astype({\"age\": \"category\"})"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 231,
+   "id": "6a91d57d",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "<class 'pandas.core.frame.DataFrame'>\n",
+      "RangeIndex: 260601 entries, 0 to 260600\n",
+      "Data columns (total 39 columns):\n",
+      " #   Column                                  Non-Null Count   Dtype   \n",
+      "---  ------                                  --------------   -----   \n",
+      " 0   building_id                             260601 non-null  int64   \n",
+      " 1   geo_level_1_id                          260601 non-null  category\n",
+      " 2   geo_level_2_id                          260601 non-null  category\n",
+      " 3   geo_level_3_id                          260601 non-null  category\n",
+      " 4   count_floors_pre_eq                     260601 non-null  int64   \n",
+      " 5   age                                     260601 non-null  category\n",
+      " 6   area_percentage                         260601 non-null  int64   \n",
+      " 7   height_percentage                       260601 non-null  int64   \n",
+      " 8   land_surface_condition                  260601 non-null  object  \n",
+      " 9   foundation_type                         260601 non-null  object  \n",
+      " 10  roof_type                               260601 non-null  object  \n",
+      " 11  ground_floor_type                       260601 non-null  object  \n",
+      " 12  other_floor_type                        260601 non-null  object  \n",
+      " 13  position                                260601 non-null  object  \n",
+      " 14  plan_configuration                      260601 non-null  object  \n",
+      " 15  has_superstructure_adobe_mud            260601 non-null  int64   \n",
+      " 16  has_superstructure_mud_mortar_stone     260601 non-null  int64   \n",
+      " 17  has_superstructure_stone_flag           260601 non-null  int64   \n",
+      " 18  has_superstructure_cement_mortar_stone  260601 non-null  int64   \n",
+      " 19  has_superstructure_mud_mortar_brick     260601 non-null  int64   \n",
+      " 20  has_superstructure_cement_mortar_brick  260601 non-null  int64   \n",
+      " 21  has_superstructure_timber               260601 non-null  int64   \n",
+      " 22  has_superstructure_bamboo               260601 non-null  int64   \n",
+      " 23  has_superstructure_rc_non_engineered    260601 non-null  int64   \n",
+      " 24  has_superstructure_rc_engineered        260601 non-null  int64   \n",
+      " 25  has_superstructure_other                260601 non-null  int64   \n",
+      " 26  legal_ownership_status                  260601 non-null  object  \n",
+      " 27  count_families                          260601 non-null  int64   \n",
+      " 28  has_secondary_use                       260601 non-null  int64   \n",
+      " 29  has_secondary_use_agriculture           260601 non-null  int64   \n",
+      " 30  has_secondary_use_hotel                 260601 non-null  int64   \n",
+      " 31  has_secondary_use_rental                260601 non-null  int64   \n",
+      " 32  has_secondary_use_institution           260601 non-null  int64   \n",
+      " 33  has_secondary_use_school                260601 non-null  int64   \n",
+      " 34  has_secondary_use_industry              260601 non-null  int64   \n",
+      " 35  has_secondary_use_health_post           260601 non-null  int64   \n",
+      " 36  has_secondary_use_gov_office            260601 non-null  int64   \n",
+      " 37  has_secondary_use_use_police            260601 non-null  int64   \n",
+      " 38  has_secondary_use_other                 260601 non-null  int64   \n",
+      "dtypes: category(4), int64(27), object(8)\n",
+      "memory usage: 71.5+ MB\n"
+     ]
+    }
+   ],
+   "source": [
+    "features2.info()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 234,
+   "id": "77cd6823",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0.740905602455871\n",
+      "{'xgbclassifier__colsample_bytree': 0.7, 'xgbclassifier__learning_rate': 0.25, 'xgbclassifier__max_depth': 10, 'xgbclassifier__min_child_weight': 3, 'xgbclassifier__n_estimators': 150, 'xgbclassifier__subsample': 1}\n"
+     ]
+    }
+   ],
+   "source": [
+    "pipe11 = make_pipeline(TargetEncoder(), MinMaxScaler(), XGBClassifier())\n",
+    "\n",
+    "X_train, X_test, y_train, y_test = train_test_split(\n",
+    "    features2.drop(columns=['building_id']), target_xgb['damage_grade'], train_size=0.7, random_state=42\n",
+    ")\n",
+    "kfold = KFold(n_splits=5, shuffle=True, random_state=42)\n",
+    "\n",
+    "pipe_grid ={'xgbclassifier__n_estimators': [150],\n",
+    "            'xgbclassifier__learning_rate':[0.25],\n",
+    "            'xgbclassifier__max_depth':[10],\n",
+    "            'xgbclassifier__subsample':[1],\n",
+    "            'xgbclassifier__colsample_bytree':[0.7],\n",
+    "            'xgbclassifier__min_child_weight':[3]\n",
+    "           \n",
+    "           }\n",
+    "\n",
+    "\n",
+    "\n",
+    "# Instantiate the grid\n",
+    "pipe_cv = GridSearchCV(\n",
+    "    pipe10,\n",
+    "    param_grid=pipe_grid,\n",
+    "    n_jobs=-1,\n",
+    "    cv=kfold,\n",
+    ")\n",
+    "\n",
+    "pipe_cv.fit(X_train, y_train)\n",
+    "\n",
+    "pipe_cv.predict(X_test)\n",
+    "\n",
+    "print(pipe_cv.best_score_)\n",
+    "print(pipe_cv.best_params_)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "bb09379a",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#Best performing Hyperparameters so far."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "ed0d549f",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#Hyperparameters and their performance\n",
+    "#0.740905602455871\n",
+    "#{'xgbclassifier__colsample_bytree': 0.7, \n",
+    "# 'xgbclassifier__learning_rate': 0.25, \n",
+    " #'xgbclassifier__max_depth': 10, \n",
+    " #'xgbclassifier__min_child_weight': 3, \n",
+    " #'xgbclassifier__n_estimators': 150, 'xgbclassifier__subsample': 1}"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "3b25ff1c",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Using Robust Scaler"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 355,
+   "id": "34d9374e",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0.7454269210158786\n",
+      "{'xgbclassifier__colsample_bytree': 0.7, 'xgbclassifier__learning_rate': 0.25, 'xgbclassifier__max_depth': 10, 'xgbclassifier__min_child_weight': 3, 'xgbclassifier__n_estimators': 150, 'xgbclassifier__subsample': 1}\n"
+     ]
+    }
+   ],
+   "source": [
+    "pipe12 = make_pipeline(TargetEncoder(), RobustScaler(), XGBClassifier())\n",
+    "\n",
+    "kfold = KFold(n_splits=5, shuffle=True, random_state=42)\n",
+    "\n",
+    "pipe_grid ={'xgbclassifier__n_estimators': [150],\n",
+    "            'xgbclassifier__learning_rate':[0.25],\n",
+    "            'xgbclassifier__max_depth':[10],\n",
+    "            'xgbclassifier__subsample':[1],\n",
+    "            'xgbclassifier__colsample_bytree':[0.7],\n",
+    "            'xgbclassifier__min_child_weight':[3]\n",
+    "           \n",
+    "           }\n",
+    "\n",
+    "\n",
+    "\n",
+    "# Instantiate the grid\n",
+    "pipe_cv = GridSearchCV(\n",
+    "    pipe12,\n",
+    "    param_grid=pipe_grid,\n",
+    "    n_jobs=-1,\n",
+    "    cv=kfold,\n",
+    ")\n",
+    "\n",
+    "pipe_cv.fit(features2.drop(columns=['building_id']), target_xgb['damage_grade'])\n",
+    "\n",
+    "print(pipe_cv.best_score_)\n",
+    "print(pipe_cv.best_params_)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "53f9e8c9",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#Robust Scaler\n",
+    "# Best HyperParameters\n",
+    "#0.7416730621642363\n",
+    "#{'xgbclassifier__colsample_bytree': 0.7, 'xgbclassifier__learning_rate': 0.25, 'xgbclassifier__max_depth': 10, \n",
+    " \n",
+    "# 'xgbclassifier__min_child_weight': 3, 'xgbclassifier__n_estimators': 150, 'xgbclassifier__subsample': 1}"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 359,
+   "id": "e9f9513e",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "pred = pipe_cv.best_estimator_.predict(test_set.drop(columns=['building_id']))\n",
+    "\n",
+    "new_df = pd.DataFrame(\n",
+    "    {\n",
+    "        \"building_id\": test_set.loc[:, \"building_id\"],\n",
+    "        \"damage_grade\": pred + 1\n",
+    "    }\n",
+    ").to_csv(\"xgb_full_data.csv\", index=False)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 250,
+   "id": "697783dc",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "new_df2 = pd.DataFrame(\n",
+    "    {\n",
+    "        \"building_id\": test_set.loc[:, \"building_id\"],\n",
+    "        \"damage_grade\": pred})\n",
+    "\n",
+    "new_df2['damage_grade'] = new_df2['damage_grade']+1\n",
+    "\n",
+    "new_df2.to_csv(\"xgb_full_data.csv\", index=False)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 275,
+   "id": "fd6062cd",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Saving Pipeline!"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 276,
+   "id": "498b6246",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "['earthquake_pipeline.pkl']"
+      ]
+     },
+     "execution_count": 276,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "joblib.dump(pipe_cv, 'earthquake_pipeline.pkl', compress = 1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 277,
+   "id": "43143b04",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "<class 'pandas.core.frame.DataFrame'>\n",
+      "RangeIndex: 260601 entries, 0 to 260600\n",
+      "Data columns (total 39 columns):\n",
+      " #   Column                                  Non-Null Count   Dtype   \n",
+      "---  ------                                  --------------   -----   \n",
+      " 0   building_id                             260601 non-null  int64   \n",
+      " 1   geo_level_1_id                          260601 non-null  category\n",
+      " 2   geo_level_2_id                          260601 non-null  category\n",
+      " 3   geo_level_3_id                          260601 non-null  category\n",
+      " 4   count_floors_pre_eq                     260601 non-null  int64   \n",
+      " 5   age                                     260601 non-null  category\n",
+      " 6   area_percentage                         260601 non-null  int64   \n",
+      " 7   height_percentage                       260601 non-null  int64   \n",
+      " 8   land_surface_condition                  260601 non-null  object  \n",
+      " 9   foundation_type                         260601 non-null  object  \n",
+      " 10  roof_type                               260601 non-null  object  \n",
+      " 11  ground_floor_type                       260601 non-null  object  \n",
+      " 12  other_floor_type                        260601 non-null  object  \n",
+      " 13  position                                260601 non-null  object  \n",
+      " 14  plan_configuration                      260601 non-null  object  \n",
+      " 15  has_superstructure_adobe_mud            260601 non-null  int64   \n",
+      " 16  has_superstructure_mud_mortar_stone     260601 non-null  int64   \n",
+      " 17  has_superstructure_stone_flag           260601 non-null  int64   \n",
+      " 18  has_superstructure_cement_mortar_stone  260601 non-null  int64   \n",
+      " 19  has_superstructure_mud_mortar_brick     260601 non-null  int64   \n",
+      " 20  has_superstructure_cement_mortar_brick  260601 non-null  int64   \n",
+      " 21  has_superstructure_timber               260601 non-null  int64   \n",
+      " 22  has_superstructure_bamboo               260601 non-null  int64   \n",
+      " 23  has_superstructure_rc_non_engineered    260601 non-null  int64   \n",
+      " 24  has_superstructure_rc_engineered        260601 non-null  int64   \n",
+      " 25  has_superstructure_other                260601 non-null  int64   \n",
+      " 26  legal_ownership_status                  260601 non-null  object  \n",
+      " 27  count_families                          260601 non-null  int64   \n",
+      " 28  has_secondary_use                       260601 non-null  int64   \n",
+      " 29  has_secondary_use_agriculture           260601 non-null  int64   \n",
+      " 30  has_secondary_use_hotel                 260601 non-null  int64   \n",
+      " 31  has_secondary_use_rental                260601 non-null  int64   \n",
+      " 32  has_secondary_use_institution           260601 non-null  int64   \n",
+      " 33  has_secondary_use_school                260601 non-null  int64   \n",
+      " 34  has_secondary_use_industry              260601 non-null  int64   \n",
+      " 35  has_secondary_use_health_post           260601 non-null  int64   \n",
+      " 36  has_secondary_use_gov_office            260601 non-null  int64   \n",
+      " 37  has_secondary_use_use_police            260601 non-null  int64   \n",
+      " 38  has_secondary_use_other                 260601 non-null  int64   \n",
+      "dtypes: category(4), int64(27), object(8)\n",
+      "memory usage: 71.5+ MB\n"
+     ]
+    }
+   ],
+   "source": [
+    "features2.info()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 324,
+   "id": "17ef8536",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "cols =['land_surface_condition','foundation_type', 'roof_type', 'ground_floor_type', 'other_floor_type',\n",
+    "                'position', 'plan_configuration', 'legal_ownership_status', \n",
+    "       'count_families','geo_level_1_id', 'geo_level_2_id','geo_level_3_id', 'age']"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 331,
+   "id": "0ba58e67",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "array([1.33173083e-01, 6.89321406e-02, 1.47283717e-01, 2.57098531e-01,\n",
+       "       1.38888018e-02, 7.05181623e-02, 6.92595770e-02, 3.88423457e-02,\n",
+       "       1.38032927e-02, 1.88795943e-02, 1.98732312e-02, 1.95102960e-02,\n",
+       "       1.61553653e-02, 1.76680118e-02, 6.95271757e-03, 4.64598545e-03,\n",
+       "       9.91511368e-03, 2.77792716e-03, 2.31098330e-03, 4.42256115e-03,\n",
+       "       6.63748551e-03, 9.15641785e-03, 5.11071611e-03, 3.35931532e-03,\n",
+       "       1.74874067e-03, 2.36348109e-03, 5.58116277e-03, 1.70655475e-02,\n",
+       "       5.03712194e-03, 3.10885844e-03, 2.55165348e-03, 9.85904731e-04,\n",
+       "       1.78459641e-04, 8.83278930e-05, 2.72171672e-04, 4.19386260e-05,\n",
+       "       2.18601524e-05, 2.49502130e-05, 7.54447953e-04])"
+      ]
+     },
+     "execution_count": 331,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "pipe12 = make_pipeline(TargetEncoder(cols=cols), RobustScaler())\n",
+    "encoded_data = pipe12.fit_transform(features, target.loc[:, \"damage_grade\"])\n",
+    "\n",
+    "fi = RandomForestClassifier(random_state=42).fit(encoded_data, target.loc[:, \"damage_grade\"]).feature_importances_"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 350,
+   "id": "3cd87995",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "fi_df = pd.DataFrame(\n",
+    "    {\n",
+    "        \"columns\": features.columns,\n",
+    "        \"fi\": fi\n",
+    "    }\n",
+    ")\n",
+    "threshold = 0.005\n",
+    "columns1 = fi_df.query(\"fi>@threshold\").loc[:, \"columns\"].tolist()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 347,
+   "id": "a9f8cdc6",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "['building_id',\n",
+       " 'geo_level_1_id',\n",
+       " 'geo_level_2_id',\n",
+       " 'geo_level_3_id',\n",
+       " 'count_floors_pre_eq',\n",
+       " 'age',\n",
+       " 'area_percentage',\n",
+       " 'height_percentage',\n",
+       " 'land_surface_condition',\n",
+       " 'foundation_type',\n",
+       " 'roof_type',\n",
+       " 'ground_floor_type',\n",
+       " 'other_floor_type',\n",
+       " 'position',\n",
+       " 'plan_configuration',\n",
+       " 'has_superstructure_mud_mortar_stone',\n",
+       " 'has_superstructure_cement_mortar_brick',\n",
+       " 'has_superstructure_timber',\n",
+       " 'has_superstructure_bamboo',\n",
+       " 'legal_ownership_status',\n",
+       " 'count_families',\n",
+       " 'has_secondary_use']"
+      ]
+     },
+     "execution_count": 347,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "columns"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 353,
+   "id": "336131c2",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>building_id</th>\n",
+       "      <th>geo_level_1_id</th>\n",
+       "      <th>geo_level_2_id</th>\n",
+       "      <th>geo_level_3_id</th>\n",
+       "      <th>count_floors_pre_eq</th>\n",
+       "      <th>age</th>\n",
+       "      <th>area_percentage</th>\n",
+       "      <th>height_percentage</th>\n",
+       "      <th>land_surface_condition</th>\n",
+       "      <th>foundation_type</th>\n",
+       "      <th>...</th>\n",
+       "      <th>has_secondary_use_agriculture</th>\n",
+       "      <th>has_secondary_use_hotel</th>\n",
+       "      <th>has_secondary_use_rental</th>\n",
+       "      <th>has_secondary_use_institution</th>\n",
+       "      <th>has_secondary_use_school</th>\n",
+       "      <th>has_secondary_use_industry</th>\n",
+       "      <th>has_secondary_use_health_post</th>\n",
+       "      <th>has_secondary_use_gov_office</th>\n",
+       "      <th>has_secondary_use_use_police</th>\n",
+       "      <th>has_secondary_use_other</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>802906</td>\n",
+       "      <td>6</td>\n",
+       "      <td>487</td>\n",
+       "      <td>12198</td>\n",
+       "      <td>2</td>\n",
+       "      <td>30</td>\n",
+       "      <td>6</td>\n",
+       "      <td>5</td>\n",
+       "      <td>t</td>\n",
+       "      <td>r</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>28830</td>\n",
+       "      <td>8</td>\n",
+       "      <td>900</td>\n",
+       "      <td>2812</td>\n",
+       "      <td>2</td>\n",
+       "      <td>10</td>\n",
+       "      <td>8</td>\n",
+       "      <td>7</td>\n",
+       "      <td>o</td>\n",
+       "      <td>r</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>94947</td>\n",
+       "      <td>21</td>\n",
+       "      <td>363</td>\n",
+       "      <td>8973</td>\n",
+       "      <td>2</td>\n",
+       "      <td>10</td>\n",
+       "      <td>5</td>\n",
+       "      <td>5</td>\n",
+       "      <td>t</td>\n",
+       "      <td>r</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>590882</td>\n",
+       "      <td>22</td>\n",
+       "      <td>418</td>\n",
+       "      <td>10694</td>\n",
+       "      <td>2</td>\n",
+       "      <td>10</td>\n",
+       "      <td>6</td>\n",
+       "      <td>5</td>\n",
+       "      <td>t</td>\n",
+       "      <td>r</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>201944</td>\n",
+       "      <td>11</td>\n",
+       "      <td>131</td>\n",
+       "      <td>1488</td>\n",
+       "      <td>3</td>\n",
+       "      <td>30</td>\n",
+       "      <td>8</td>\n",
+       "      <td>9</td>\n",
+       "      <td>t</td>\n",
+       "      <td>r</td>\n",
+       "      <td>...</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>5 rows × 39 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   building_id geo_level_1_id geo_level_2_id geo_level_3_id  count_floors_pre_eq age  area_percentage  height_percentage land_surface_condition foundation_type  ... has_secondary_use_agriculture has_secondary_use_hotel has_secondary_use_rental has_secondary_use_institution has_secondary_use_school  has_secondary_use_industry  has_secondary_use_health_post  has_secondary_use_gov_office  has_secondary_use_use_police  has_secondary_use_other\n",
+       "0       802906              6            487          12198                    2  30                6                  5                      t               r  ...                             0                       0                        0                             0                        0                           0                              0                             0                             0                        0\n",
+       "1        28830              8            900           2812                    2  10                8                  7                      o               r  ...                             0                       0                        0                             0                        0                           0                              0                             0                             0                        0\n",
+       "2        94947             21            363           8973                    2  10                5                  5                      t               r  ...                             0                       0                        0                             0                        0                           0                              0                             0                             0                        0\n",
+       "3       590882             22            418          10694                    2  10                6                  5                      t               r  ...                             0                       0                        0                             0                        0                           0                              0                             0                             0                        0\n",
+       "4       201944             11            131           1488                    3  30                8                  9                      t               r  ...                             0                       0                        0                             0                        0                           0                              0                             0                             0                        0\n",
+       "\n",
+       "[5 rows x 39 columns]"
+      ]
+     },
+     "execution_count": 353,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "features2.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 354,
+   "id": "b20c6760",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:92: FutureWarning: Default parameter min_samples_leaf will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter min_samples_leaf will change in version 2.6.\"\n",
+      "/Users/HanifDS/miniforge3/envs/env_tf2/lib/python3.9/site-packages/category_encoders/target_encoder.py:97: FutureWarning: Default parameter smoothing will change in version 2.6.See https://github.com/scikit-learn-contrib/category_encoders/issues/327\n",
+      "  warnings.warn(\"Default parameter smoothing will change in version 2.6.\"\n"
+     ]
+    },
+    {
+     "ename": "KeyboardInterrupt",
+     "evalue": "",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mKeyboardInterrupt\u001b[0m                         Traceback (most recent call last)",
+      "Input \u001b[0;32mIn [354]\u001b[0m, in \u001b[0;36m<cell line: 27>\u001b[0;34m()\u001b[0m\n\u001b[1;32m     19\u001b[0m \u001b[38;5;66;03m# Instantiate the grid\u001b[39;00m\n\u001b[1;32m     20\u001b[0m pipe_cv \u001b[38;5;241m=\u001b[39m GridSearchCV(\n\u001b[1;32m     21\u001b[0m     pipe12,\n\u001b[1;32m     22\u001b[0m     param_grid\u001b[38;5;241m=\u001b[39mpipe_grid,\n\u001b[1;32m     23\u001b[0m     n_jobs\u001b[38;5;241m=\u001b[39m\u001b[38;5;241m-\u001b[39m\u001b[38;5;241m1\u001b[39m,\n\u001b[1;32m     24\u001b[0m     cv\u001b[38;5;241m=\u001b[39mkfold,\n\u001b[1;32m     25\u001b[0m )\n\u001b[0;32m---> 27\u001b[0m \u001b[43mpipe_cv\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mfit\u001b[49m\u001b[43m(\u001b[49m\u001b[43mX_train\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43my_train\u001b[49m\u001b[43m)\u001b[49m\n\u001b[1;32m     29\u001b[0m pipe_cv\u001b[38;5;241m.\u001b[39mpredict(X_test)\n\u001b[1;32m     31\u001b[0m \u001b[38;5;28mprint\u001b[39m(pipe_cv\u001b[38;5;241m.\u001b[39mbest_score_)\n",
+      "File \u001b[0;32m~/miniforge3/envs/env_tf2/lib/python3.9/site-packages/sklearn/model_selection/_search.py:926\u001b[0m, in \u001b[0;36mBaseSearchCV.fit\u001b[0;34m(self, X, y, groups, **fit_params)\u001b[0m\n\u001b[1;32m    924\u001b[0m refit_start_time \u001b[38;5;241m=\u001b[39m time\u001b[38;5;241m.\u001b[39mtime()\n\u001b[1;32m    925\u001b[0m \u001b[38;5;28;01mif\u001b[39;00m y \u001b[38;5;129;01mis\u001b[39;00m \u001b[38;5;129;01mnot\u001b[39;00m \u001b[38;5;28;01mNone\u001b[39;00m:\n\u001b[0;32m--> 926\u001b[0m     \u001b[38;5;28;43mself\u001b[39;49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mbest_estimator_\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mfit\u001b[49m\u001b[43m(\u001b[49m\u001b[43mX\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43my\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[43mfit_params\u001b[49m\u001b[43m)\u001b[49m\n\u001b[1;32m    927\u001b[0m \u001b[38;5;28;01melse\u001b[39;00m:\n\u001b[1;32m    928\u001b[0m     \u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39mbest_estimator_\u001b[38;5;241m.\u001b[39mfit(X, \u001b[38;5;241m*\u001b[39m\u001b[38;5;241m*\u001b[39mfit_params)\n",
+      "File \u001b[0;32m~/miniforge3/envs/env_tf2/lib/python3.9/site-packages/sklearn/pipeline.py:394\u001b[0m, in \u001b[0;36mPipeline.fit\u001b[0;34m(self, X, y, **fit_params)\u001b[0m\n\u001b[1;32m    392\u001b[0m     \u001b[38;5;28;01mif\u001b[39;00m \u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39m_final_estimator \u001b[38;5;241m!=\u001b[39m \u001b[38;5;124m\"\u001b[39m\u001b[38;5;124mpassthrough\u001b[39m\u001b[38;5;124m\"\u001b[39m:\n\u001b[1;32m    393\u001b[0m         fit_params_last_step \u001b[38;5;241m=\u001b[39m fit_params_steps[\u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39msteps[\u001b[38;5;241m-\u001b[39m\u001b[38;5;241m1\u001b[39m][\u001b[38;5;241m0\u001b[39m]]\n\u001b[0;32m--> 394\u001b[0m         \u001b[38;5;28;43mself\u001b[39;49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43m_final_estimator\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mfit\u001b[49m\u001b[43m(\u001b[49m\u001b[43mXt\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43my\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[43mfit_params_last_step\u001b[49m\u001b[43m)\u001b[49m\n\u001b[1;32m    396\u001b[0m \u001b[38;5;28;01mreturn\u001b[39;00m \u001b[38;5;28mself\u001b[39m\n",
+      "File \u001b[0;32m~/miniforge3/envs/env_tf2/lib/python3.9/site-packages/xgboost/core.py:532\u001b[0m, in \u001b[0;36m_deprecate_positional_args.<locals>.inner_f\u001b[0;34m(*args, **kwargs)\u001b[0m\n\u001b[1;32m    530\u001b[0m \u001b[38;5;28;01mfor\u001b[39;00m k, arg \u001b[38;5;129;01min\u001b[39;00m \u001b[38;5;28mzip\u001b[39m(sig\u001b[38;5;241m.\u001b[39mparameters, args):\n\u001b[1;32m    531\u001b[0m     kwargs[k] \u001b[38;5;241m=\u001b[39m arg\n\u001b[0;32m--> 532\u001b[0m \u001b[38;5;28;01mreturn\u001b[39;00m \u001b[43mf\u001b[49m\u001b[43m(\u001b[49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[43mkwargs\u001b[49m\u001b[43m)\u001b[49m\n",
+      "File \u001b[0;32m~/miniforge3/envs/env_tf2/lib/python3.9/site-packages/xgboost/sklearn.py:1400\u001b[0m, in \u001b[0;36mXGBClassifier.fit\u001b[0;34m(self, X, y, sample_weight, base_margin, eval_set, eval_metric, early_stopping_rounds, verbose, xgb_model, sample_weight_eval_set, base_margin_eval_set, feature_weights, callbacks)\u001b[0m\n\u001b[1;32m   1379\u001b[0m model, metric, params, early_stopping_rounds, callbacks \u001b[38;5;241m=\u001b[39m \u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39m_configure_fit(\n\u001b[1;32m   1380\u001b[0m     xgb_model, eval_metric, params, early_stopping_rounds, callbacks\n\u001b[1;32m   1381\u001b[0m )\n\u001b[1;32m   1382\u001b[0m train_dmatrix, evals \u001b[38;5;241m=\u001b[39m _wrap_evaluation_matrices(\n\u001b[1;32m   1383\u001b[0m     missing\u001b[38;5;241m=\u001b[39m\u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39mmissing,\n\u001b[1;32m   1384\u001b[0m     X\u001b[38;5;241m=\u001b[39mX,\n\u001b[0;32m   (...)\u001b[0m\n\u001b[1;32m   1397\u001b[0m     enable_categorical\u001b[38;5;241m=\u001b[39m\u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39menable_categorical,\n\u001b[1;32m   1398\u001b[0m )\n\u001b[0;32m-> 1400\u001b[0m \u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39m_Booster \u001b[38;5;241m=\u001b[39m \u001b[43mtrain\u001b[49m\u001b[43m(\u001b[49m\n\u001b[1;32m   1401\u001b[0m \u001b[43m    \u001b[49m\u001b[43mparams\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1402\u001b[0m \u001b[43m    \u001b[49m\u001b[43mtrain_dmatrix\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1403\u001b[0m \u001b[43m    \u001b[49m\u001b[38;5;28;43mself\u001b[39;49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mget_num_boosting_rounds\u001b[49m\u001b[43m(\u001b[49m\u001b[43m)\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1404\u001b[0m \u001b[43m    \u001b[49m\u001b[43mevals\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[43mevals\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1405\u001b[0m \u001b[43m    \u001b[49m\u001b[43mearly_stopping_rounds\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[43mearly_stopping_rounds\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1406\u001b[0m \u001b[43m    \u001b[49m\u001b[43mevals_result\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[43mevals_result\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1407\u001b[0m \u001b[43m    \u001b[49m\u001b[43mobj\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[43mobj\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1408\u001b[0m \u001b[43m    \u001b[49m\u001b[43mcustom_metric\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[43mmetric\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1409\u001b[0m \u001b[43m    \u001b[49m\u001b[43mverbose_eval\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[43mverbose\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1410\u001b[0m \u001b[43m    \u001b[49m\u001b[43mxgb_model\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[43mmodel\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1411\u001b[0m \u001b[43m    \u001b[49m\u001b[43mcallbacks\u001b[49m\u001b[38;5;241;43m=\u001b[39;49m\u001b[43mcallbacks\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1412\u001b[0m \u001b[43m\u001b[49m\u001b[43m)\u001b[49m\n\u001b[1;32m   1414\u001b[0m \u001b[38;5;28;01mif\u001b[39;00m \u001b[38;5;129;01mnot\u001b[39;00m callable(\u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39mobjective):\n\u001b[1;32m   1415\u001b[0m     \u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39mobjective \u001b[38;5;241m=\u001b[39m params[\u001b[38;5;124m\"\u001b[39m\u001b[38;5;124mobjective\u001b[39m\u001b[38;5;124m\"\u001b[39m]\n",
+      "File \u001b[0;32m~/miniforge3/envs/env_tf2/lib/python3.9/site-packages/xgboost/core.py:532\u001b[0m, in \u001b[0;36m_deprecate_positional_args.<locals>.inner_f\u001b[0;34m(*args, **kwargs)\u001b[0m\n\u001b[1;32m    530\u001b[0m \u001b[38;5;28;01mfor\u001b[39;00m k, arg \u001b[38;5;129;01min\u001b[39;00m \u001b[38;5;28mzip\u001b[39m(sig\u001b[38;5;241m.\u001b[39mparameters, args):\n\u001b[1;32m    531\u001b[0m     kwargs[k] \u001b[38;5;241m=\u001b[39m arg\n\u001b[0;32m--> 532\u001b[0m \u001b[38;5;28;01mreturn\u001b[39;00m \u001b[43mf\u001b[49m\u001b[43m(\u001b[49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[38;5;241;43m*\u001b[39;49m\u001b[43mkwargs\u001b[49m\u001b[43m)\u001b[49m\n",
+      "File \u001b[0;32m~/miniforge3/envs/env_tf2/lib/python3.9/site-packages/xgboost/training.py:181\u001b[0m, in \u001b[0;36mtrain\u001b[0;34m(params, dtrain, num_boost_round, evals, obj, feval, maximize, early_stopping_rounds, evals_result, verbose_eval, xgb_model, callbacks, custom_metric)\u001b[0m\n\u001b[1;32m    179\u001b[0m \u001b[38;5;28;01mif\u001b[39;00m cb_container\u001b[38;5;241m.\u001b[39mbefore_iteration(bst, i, dtrain, evals):\n\u001b[1;32m    180\u001b[0m     \u001b[38;5;28;01mbreak\u001b[39;00m\n\u001b[0;32m--> 181\u001b[0m \u001b[43mbst\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mupdate\u001b[49m\u001b[43m(\u001b[49m\u001b[43mdtrain\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43mi\u001b[49m\u001b[43m,\u001b[49m\u001b[43m \u001b[49m\u001b[43mobj\u001b[49m\u001b[43m)\u001b[49m\n\u001b[1;32m    182\u001b[0m \u001b[38;5;28;01mif\u001b[39;00m cb_container\u001b[38;5;241m.\u001b[39mafter_iteration(bst, i, dtrain, evals):\n\u001b[1;32m    183\u001b[0m     \u001b[38;5;28;01mbreak\u001b[39;00m\n",
+      "File \u001b[0;32m~/miniforge3/envs/env_tf2/lib/python3.9/site-packages/xgboost/core.py:1733\u001b[0m, in \u001b[0;36mBooster.update\u001b[0;34m(self, dtrain, iteration, fobj)\u001b[0m\n\u001b[1;32m   1730\u001b[0m \u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39m_validate_features(dtrain)\n\u001b[1;32m   1732\u001b[0m \u001b[38;5;28;01mif\u001b[39;00m fobj \u001b[38;5;129;01mis\u001b[39;00m \u001b[38;5;28;01mNone\u001b[39;00m:\n\u001b[0;32m-> 1733\u001b[0m     _check_call(\u001b[43m_LIB\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mXGBoosterUpdateOneIter\u001b[49m\u001b[43m(\u001b[49m\u001b[38;5;28;43mself\u001b[39;49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mhandle\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1734\u001b[0m \u001b[43m                                            \u001b[49m\u001b[43mctypes\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mc_int\u001b[49m\u001b[43m(\u001b[49m\u001b[43miteration\u001b[49m\u001b[43m)\u001b[49m\u001b[43m,\u001b[49m\n\u001b[1;32m   1735\u001b[0m \u001b[43m                                            \u001b[49m\u001b[43mdtrain\u001b[49m\u001b[38;5;241;43m.\u001b[39;49m\u001b[43mhandle\u001b[49m\u001b[43m)\u001b[49m)\n\u001b[1;32m   1736\u001b[0m \u001b[38;5;28;01melse\u001b[39;00m:\n\u001b[1;32m   1737\u001b[0m     pred \u001b[38;5;241m=\u001b[39m \u001b[38;5;28mself\u001b[39m\u001b[38;5;241m.\u001b[39mpredict(dtrain, output_margin\u001b[38;5;241m=\u001b[39m\u001b[38;5;28;01mTrue\u001b[39;00m, training\u001b[38;5;241m=\u001b[39m\u001b[38;5;28;01mTrue\u001b[39;00m)\n",
+      "\u001b[0;31mKeyboardInterrupt\u001b[0m: "
+     ]
+    }
+   ],
+   "source": [
+    "pipe12 = make_pipeline(TargetEncoder(), RobustScaler(), XGBClassifier())\n",
+    "\n",
+    "X_train, X_test, y_train, y_test = train_test_split(\n",
+    "    features2[columns], target_xgb['damage_grade'], train_size=0.7, random_state=42\n",
+    ")\n",
+    "kfold = KFold(n_splits=5, shuffle=True, random_state=42)\n",
+    "\n",
+    "pipe_grid ={'xgbclassifier__n_estimators': [150],\n",
+    "            'xgbclassifier__learning_rate':[0.25],\n",
+    "            'xgbclassifier__max_depth':[10],\n",
+    "            'xgbclassifier__subsample':[1],\n",
+    "            'xgbclassifier__colsample_bytree':[0.7],\n",
+    "            'xgbclassifier__min_child_weight':[3]\n",
+    "           \n",
+    "           }\n",
+    "\n",
+    "\n",
+    "\n",
+    "# Instantiate the grid\n",
+    "pipe_cv = GridSearchCV(\n",
+    "    pipe12,\n",
+    "    param_grid=pipe_grid,\n",
+    "    n_jobs=-1,\n",
+    "    cv=kfold,\n",
+    ")\n",
+    "\n",
+    "pipe_cv.fit(X_train, y_train)\n",
+    "\n",
+    "pipe_cv.predict(X_test)\n",
+    "\n",
+    "print(pipe_cv.best_score_)\n",
+    "print(pipe_cv.best_params_)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "26b370cf",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.13"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
